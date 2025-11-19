@@ -70,3 +70,16 @@ The system uses a **Hub-and-Spoke** architecture:
 * `tools/`: Custom tools (PDF reader).
 
 * `main.py`: The entry point for the Study Manager.
+
+
+## ☁️ Deployment (Docker)
+To deploy this agent to Google Cloud Run or any Docker-based host:
+
+1. **Build the Container:**
+   ```bash
+   docker build -t study-swarm .
+   ```
+2. **Run the Container:**
+    ```bash
+    docker run -e GOOGLE_API_KEY=your_actual_key_here -it study-swarm
+    ```
