@@ -1,0 +1,15 @@
+# Security (Never upload keys)
+.env
+
+# Python Environments (Block your custom 'kaggle' folder)
+kaggle/
+venv/
+env/
+.venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+
+# OS Files
+.DS_Store
