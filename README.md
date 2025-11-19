@@ -43,7 +43,7 @@ The system uses a **Hub-and-Spoke** architecture:
 
 1. **Clone the repository**
    ```bash
-   git clone [https://github.com/YOUR_USERNAME/kaggle-agent-study-swarm.git](https://github.com/YOUR_USERNAME/kaggle-agent-study-swarm.git)
+   git clone [https://github.com/simonMakumi/kaggle-agent-study-swarm.git](https://github.com/simonMakumi/kaggle-agent-study-swarm.git)
    cd kaggle-agent-study-swarm
    ```
 
