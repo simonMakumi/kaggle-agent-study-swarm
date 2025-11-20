@@ -25,7 +25,33 @@ Study Swarm solves this by deploying a team of agents:
 * **💻 Code Agent:** A specialist that can write and execute Python code to demonstrate concepts practically.
 
 ## 🏗️ Architecture
-*[Architecture Diagram Placeholder]*
+
+```mermaid
+graph TD
+    User[User 🎓] -->|Input| UI[Streamlit UI 💻]
+    UI -->|History + Query| Brain[Gemini 2.0 Context Manager 🧠]
+    Brain -->|Rewritten Query| Router{Router 🔀}
+    
+    Router -->|Web Search| Search[Search Agent 🌐]
+    Router -->|PDF Q&A| Doc[Doc Agent 📄]
+    Router -->|Python Math| Code[Code Agent 🐍]
+    Router -->|Video Analysis| Video[Video Agent 🎥]
+    
+    Search -->|Google Search| Tool1((Google Tool))
+    Doc -->|RAG + OCR| Tool2((PDF Tool))
+    Code -->|Execute| Tool3((Python Sandbox))
+    Video -->|Multimodal| Tool4((Gemini Vision))
+    
+    Tool1 --> Search
+    Tool2 --> Doc
+    Tool3 --> Code
+    Tool4 --> Video
+    
+    Search --> UI
+    Doc --> UI
+    Code --> UI
+    Video --> UI
+```
 
 The system uses a **Hub-and-Spoke** architecture:
 1.  **User** sends a prompt to the **Manager**.
