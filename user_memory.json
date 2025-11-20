@@ -3,6 +3,7 @@
     "preferences": [],
     "facts": [
         "My name is Simon.",
-        "I study Astrophysics."
+        "I study Astrophysics.",
+        "I am also a Python developer."
     ]
 }
