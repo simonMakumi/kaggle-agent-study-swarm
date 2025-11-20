@@ -4,7 +4,7 @@ import time
 from google import genai
 from utils.memory_store import load_memory, update_memory
 
-# Import your existing agents
+# Import Agents
 from agents.search_agent import SearchAgent
 from agents.doc_agent import DocAgent
 from agents.code_agent import CodeAgent
@@ -15,7 +15,7 @@ st.set_page_config(page_title="Study Swarm Agent", page_icon="🐝", layout="wid
 API_KEY = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=API_KEY)
 
-# --- CUSTOM STYLES (Dark Mode Optimized) ---
+# --- CUSTOM STYLES ---
 st.markdown("""
     <style>
     .stChatMessage {
@@ -27,16 +27,14 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- CONSTANTS ---
-# The smart intro message you liked
 INTRO_MESSAGE = "Hi! I'm your **Study Swarm**. I can search the web 🌐, read your PDF 📄, watch your video 🎥, or run Python code 💻. How can I help?"
 
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("🧠 Long-Term Memory")
-    
-    # Load memory
     memory = load_memory()
     
+    # Display Memory
     with st.expander("What I know about you", expanded=True):
         if memory["facts"]:
             for fact in memory["facts"]:
@@ -65,8 +63,8 @@ with st.sidebar:
         st.success(f"Loaded: {uploaded_video.name}")
 
     st.divider()
-    # FIX: Clear Chat now resets to the Intro Message, not empty
     if st.button("Clear Chat"):
+        # Reset to the Smart Intro
         st.session_state.messages = [{"role": "assistant", "content": INTRO_MESSAGE}]
         st.rerun()
 
@@ -84,7 +82,7 @@ def load_agents():
     }
 agents = load_agents()
 
-# Display Chat
+# Display Chat History
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
@@ -98,7 +96,7 @@ if prompt := st.chat_input("Ask a question..."):
     with st.chat_message("assistant"):
         status = st.empty()
         
-        # 1. CONTEXTUALIZE (Session Memory)
+        # 1. CONTEXTUALIZE (With Fix for Topic Changes)
         status.markdown("🧠 Recalling context...")
         
         history_text = ""
@@ -106,10 +104,18 @@ if prompt := st.chat_input("Ask a question..."):
             history_text += f"{msg['role'].upper()}: {msg['content']}\n"
             
         context_prompt = f"""
-        Rewrite the LAST USER INPUT to be a standalone question based on CHAT HISTORY.
+        You are a query rewriter. Rewrite the LAST USER INPUT based on CHAT HISTORY.
+        
         CHAT HISTORY:
         {history_text}
+        
         LAST USER INPUT: "{prompt}"
+        
+        INSTRUCTIONS:
+        1. If the user refers to "it", "he", "that", use history to clarify.
+        2. CRITICAL: If the user changes the topic (e.g., says "My name is..." or "I study..."), IGNORE history and return the input exactly as is. Do not force previous topics into new facts.
+        3. Do NOT answer the question.
+        
         REWRITTEN QUERY:
         """
         
@@ -120,15 +126,17 @@ if prompt := st.chat_input("Ask a question..."):
             )
             final_query = rewritten_query_resp.text.strip()
         except:
-            final_query = prompt # Fallback
+            final_query = prompt
 
-        # 2. CHECK FOR NEW MEMORY
-        # FIX: If we find a memory, we save it AND rerun to update sidebar immediately
-        if "my name is" in final_query.lower() or "i study" in final_query.lower() or "i like" in final_query.lower() or "i am a" in final_query.lower():
-             update_memory(final_query)
+        # 2. MEMORY UPDATE (Logic moved BEFORE routing)
+        # We check the ORIGINAL prompt to capture the user's exact words
+        lower_prompt = prompt.lower()
+        if "my name is" in lower_prompt or "i am" in lower_prompt or "i study" in lower_prompt:
+             # Clean the fact (simple extraction)
+             update_memory(prompt)
              st.toast("Memory Updated! 💾")
-             time.sleep(1) # Tiny pause so user sees the toast
-             st.rerun() # <--- THIS FORCES THE SIDEBAR TO UPDATE INSTANTLY
+             time.sleep(1)
+             st.rerun() # Forces Sidebar update instantly
 
         # 3. ROUTING
         response = ""
@@ -150,13 +158,23 @@ if prompt := st.chat_input("Ask a question..."):
             response = agents["search"].research(final_query)
             
         else:
+            # General Chat - Now with Memory Injection
             status.markdown("🤔 Thinking...")
             memory_data = load_memory()
-            system_instruction = f"You are a helpful study assistant. You know these facts about the user: {memory_data['facts']}."
+            
+            # We explicitly tell the agent to be friendly and use the name if known
+            system_instruction = f"""
+            You are a helpful study assistant. 
+            USER FACTS: {memory_data['facts']}
+            
+            INSTRUCTION:
+            - If the user just introduced themselves, welcome them warmly using their name.
+            - If answering a question, use the user facts to make it relevant.
+            """
             
             response = client.models.generate_content(
                 model="gemini-2.0-flash",
-                contents=f"{system_instruction}\n\nUser: {final_query}"
+                contents=f"{system_instruction}\n\nUser Query: {final_query}"
             ).text
 
         status.empty()
