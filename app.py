@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import time
 from google import genai
 from utils.memory_store import load_memory, update_memory
 
@@ -14,28 +15,38 @@ st.set_page_config(page_title="Study Swarm Agent", page_icon="🐝", layout="wid
 API_KEY = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=API_KEY)
 
-# --- CUSTOM STYLES ---
+# --- CUSTOM STYLES (Dark Mode Optimized) ---
 st.markdown("""
     <style>
-    .stChatMessage {border-radius: 10px; padding: 10px; border: 1px solid #333;}
+    .stChatMessage {
+        border-radius: 10px; 
+        padding: 10px; 
+        border: 1px solid #333;
+    }
     </style>
     """, unsafe_allow_html=True)
+
+# --- CONSTANTS ---
+# The smart intro message you liked
+INTRO_MESSAGE = "Hi! I'm your **Study Swarm**. I can search the web 🌐, read your PDF 📄, watch your video 🎥, or run Python code 💻. How can I help?"
 
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("🧠 Long-Term Memory")
     
-    # Load and display memory
+    # Load memory
     memory = load_memory()
-    with st.expander("What I know about you"):
+    
+    with st.expander("What I know about you", expanded=True):
         if memory["facts"]:
             for fact in memory["facts"]:
-                st.markdown(f"- {fact}")
+                st.markdown(f"• *{fact}*")
         else:
-            st.markdown("*Nothing yet... tell me about yourself!*")
+            st.caption("Nothing yet... tell me about yourself!")
 
     st.divider()
     st.header("📂 Study Materials")
+    
     uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
     pdf_path = None
     if uploaded_pdf:
@@ -53,13 +64,15 @@ with st.sidebar:
         st.video(uploaded_video)
         st.success(f"Loaded: {uploaded_video.name}")
 
+    st.divider()
+    # FIX: Clear Chat now resets to the Intro Message, not empty
     if st.button("Clear Chat"):
-        st.session_state.messages = []
+        st.session_state.messages = [{"role": "assistant", "content": INTRO_MESSAGE}]
         st.rerun()
 
 # --- INITIALIZATION ---
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hi! I'm Study Swarm. I remember our past chats. How can I help?"}]
+    st.session_state.messages = [{"role": "assistant", "content": INTRO_MESSAGE}]
 
 @st.cache_resource
 def load_agents():
@@ -76,7 +89,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- CORE LOGIC: CONTEXTUALIZATION & ROUTING ---
+# --- CORE LOGIC ---
 if prompt := st.chat_input("Ask a question..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -86,50 +99,40 @@ if prompt := st.chat_input("Ask a question..."):
         status = st.empty()
         
         # 1. CONTEXTUALIZE (Session Memory)
-        # We use Gemini to rewrite the query if it depends on history.
         status.markdown("🧠 Recalling context...")
         
-        # Get last 3 exchanges for context
         history_text = ""
         for msg in st.session_state.messages[-5:]:
             history_text += f"{msg['role'].upper()}: {msg['content']}\n"
             
         context_prompt = f"""
-        You are a query rewriter. Your job is to rewrite the LAST USER INPUT to be a standalone question, based on the CHAT HISTORY.
-        
+        Rewrite the LAST USER INPUT to be a standalone question based on CHAT HISTORY.
         CHAT HISTORY:
         {history_text}
-        
         LAST USER INPUT: "{prompt}"
-        
-        INSTRUCTION:
-        - If the user input refers to previous messages (e.g. "What about him?", "Run that code"), rewrite it to be fully explicit.
-        - If the user input is already clear (e.g. "What is Python?"), return it exactly as is.
-        - Do NOT answer the question. Just rewrite it.
-        
         REWRITTEN QUERY:
         """
         
-        rewritten_query_resp = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=context_prompt
-        )
-        final_query = rewritten_query_resp.text.strip()
-        
-        # Debug: Show the user we understood (Optional, looks cool)
-        if final_query.lower() != prompt.lower():
-            st.caption(f"Wait, did you mean: *'{final_query}'*? Got it.")
+        try:
+            rewritten_query_resp = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=context_prompt
+            )
+            final_query = rewritten_query_resp.text.strip()
+        except:
+            final_query = prompt # Fallback
 
-        # 2. CHECK FOR NEW MEMORY (Long-Term Memory)
-        # Background task: Does this look like a fact about the user?
-        if "my name is" in final_query.lower() or "i study" in final_query.lower() or "i like" in final_query.lower():
+        # 2. CHECK FOR NEW MEMORY
+        # FIX: If we find a memory, we save it AND rerun to update sidebar immediately
+        if "my name is" in final_query.lower() or "i study" in final_query.lower() or "i like" in final_query.lower() or "i am a" in final_query.lower():
              update_memory(final_query)
              st.toast("Memory Updated! 💾")
+             time.sleep(1) # Tiny pause so user sees the toast
+             st.rerun() # <--- THIS FORCES THE SIDEBAR TO UPDATE INSTANTLY
 
-        # 3. ROUTING (Using the REWRITTEN query)
+        # 3. ROUTING
         response = ""
         
-        # Smart Keyword Routing
         if pdf_path and ("pdf" in final_query.lower() or "document" in final_query.lower() or "summarize" in final_query.lower()):
             status.markdown("📄 Reading PDF...")
             response = agents["doc"].ask_pdf(pdf_path, final_query)
@@ -142,16 +145,12 @@ if prompt := st.chat_input("Ask a question..."):
             status.markdown("💻 Running Code...")
             response = agents["code"].solve(final_query)
 
-        elif "search" in final_query.lower() or "who is" in final_query.lower() or "current" in final_query.lower() or "president" in final_query.lower():
+        elif "search" in final_query.lower() or "who is" in final_query.lower() or "current" in final_query.lower() or "president" in final_query.lower() or "news" in final_query.lower():
             status.markdown("🌐 Searching Google...")
-            # Search Agent needs the Rewritten Query to work!
             response = agents["search"].research(final_query)
             
         else:
-            # General Chat with Memory Injection
             status.markdown("🤔 Thinking...")
-            
-            # Inject Long-Term Memory into System Prompt
             memory_data = load_memory()
             system_instruction = f"You are a helpful study assistant. You know these facts about the user: {memory_data['facts']}."
             
