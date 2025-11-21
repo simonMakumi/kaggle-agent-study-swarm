@@ -52,7 +52,7 @@ with st.sidebar:
 
     st.divider()
 
-    # MEMORY SECTION (Smart Edit)
+    # MEMORY SECTION
     st.header("🧠 Long-Term Memory")
     memory = load_memory()
     
@@ -72,6 +72,12 @@ with st.sidebar:
                 else:
                     st.markdown(f"• *{fact}*")
 
+    st.divider()
+    
+    # NEW: AI JUDGE TOGGLE
+    st.header("⚙️ Advanced Settings")
+    enable_judge = st.toggle("Enable AI Judge ⚖️", value=False, help="Ask a second AI to grade the response for accuracy.")
+    
     st.divider()
     if st.button("Clear Chat"):
         st.session_state.messages = [{"role": "assistant", "content": INTRO_MESSAGE}]
@@ -95,6 +101,29 @@ agents = load_agents()
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+
+# --- HELPER: THE LIVE JUDGE ---
+def judge_response(user_query, agent_response):
+    judge_prompt = f"""
+    Act as an impartial AI Judge. Grade the following response.
+    
+    USER QUERY: "{user_query}"
+    AGENT RESPONSE: "{agent_response}"
+    
+    CRITERIA:
+    - Accuracy: Is the information correct?
+    - Helpfulness: Did it answer the user's intent?
+    - Safety: Is the content safe?
+    
+    OUTPUT FORMAT:
+    SCORE: [1-5]
+    REASON: [1 short sentence]
+    """
+    try:
+        eval_resp = client.models.generate_content(model="gemini-2.0-flash", contents=judge_prompt).text
+        return eval_resp
+    except:
+        return "SCORE: ?\nREASON: Judge fell asleep."
 
 # --- CORE LOGIC ---
 if prompt := st.chat_input("Ask a question..."):
@@ -136,7 +165,7 @@ if prompt := st.chat_input("Ask a question..."):
 
         # 3. ROUTING & EXECUTION
         response = ""
-        generated_images = [] # Store images here
+        generated_images = [] 
 
         if pdf_path and ("pdf" in final_query.lower() or "document" in final_query.lower() or "summarize" in final_query.lower()):
             status.markdown("📄 Reading PDF...")
@@ -148,8 +177,6 @@ if prompt := st.chat_input("Ask a question..."):
 
         elif "code" in final_query.lower() or "python" in final_query.lower() or "calculate" in final_query.lower() or "plot" in final_query.lower():
             status.markdown("💻 Running Code...")
-            
-            # Handle Dictionary Output (Text + Images)
             result = agents["code"].solve(final_query)
             if isinstance(result, dict):
                 response = result["text"]
@@ -171,14 +198,19 @@ if prompt := st.chat_input("Ask a question..."):
                 contents=f"{sys_prompt}\n\nUser Query: {final_query}"
             ).text
 
-        # 4. FINAL DISPLAY (Printed Exactly Once)
+        # 4. DISPLAY RESPONSE
         status.empty()
         st.markdown(response)
         
-        # If we have images (from Code Agent), show them now
         if generated_images:
             for img_data in generated_images:
                 st.image(img_data.data, caption="Generated Visualization 📊")
 
-        # Save ONLY text to history (Streamlit history doesn't handle raw image bytes well)
         st.session_state.messages.append({"role": "assistant", "content": response})
+
+        # 5. LIVE JUDGE (The New Feature)
+        if enable_judge:
+            with st.status("👨‍⚖️ The Judge is reviewing...", expanded=True) as judge_status:
+                evaluation = judge_response(final_query, response)
+                st.info(evaluation)
+                judge_status.update(label="✅ Graded", state="complete", expanded=True)
