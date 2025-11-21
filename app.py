@@ -31,7 +31,6 @@ INTRO_MESSAGE = "Hi! I'm your **Study Swarm**. I can search the web 🌐, read y
 
 # --- SIDEBAR ---
 with st.sidebar:
-    # SECTION 1: STUDY MATERIALS (Moved to Top)
     st.header("📂 Study Materials")
     
     uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
@@ -53,34 +52,27 @@ with st.sidebar:
 
     st.divider()
 
-    # SECTION 2: MEMORY
+    # MEMORY SECTION (Smart Edit)
     st.header("🧠 Long-Term Memory")
     memory = load_memory()
     
-    # Create a clean container for memory
     with st.expander("What I know about you", expanded=True):
         if not memory["facts"]:
             st.caption("Nothing yet... tell me about yourself!")
         else:
-            # SMART UI: Toggle for Edit Mode
             is_editing = st.toggle("Edit Memory", value=False)
-
             for i, fact in enumerate(memory["facts"]):
                 if is_editing:
-                    # EDIT MODE: Show Trash Can Button
-                    # vertical_alignment="center" makes it look perfect
                     col1, col2 = st.columns([0.8, 0.2], vertical_alignment="center")
-                    with col1:
-                        st.write(f"• {fact}")
+                    with col1: st.write(f"• {fact}")
                     with col2:
-                        if st.button("🗑️", key=f"del_{i}", type="tertiary", help="Delete this fact"):
+                        if st.button("🗑️", key=f"del_{i}", type="tertiary", help="Delete"):
                             delete_fact(fact)
                             st.rerun()
                 else:
-                    # VIEW MODE: Just the clean text
                     st.markdown(f"• *{fact}*")
-    
-    # SECTION 3: ACTIONS
+
+    st.divider()
     if st.button("Clear Chat"):
         st.session_state.messages = [{"role": "assistant", "content": INTRO_MESSAGE}]
         st.rerun()
@@ -118,43 +110,34 @@ if prompt := st.chat_input("Ask a question..."):
         if "my name is" in lower_prompt or "i am a" in lower_prompt or "i study" in lower_prompt:
              update_memory(prompt)
              st.toast("Memory Updated! 💾")
-             
              reply_text = f"Got it! I've added that to my memory: *'{prompt}'*."
              st.session_state.messages.append({"role": "assistant", "content": reply_text})
-             
              time.sleep(1)
              st.rerun()
 
         # 2. CONTEXTUALIZE
         status.markdown("🧠 Recalling context...")
-        
         history_text = ""
         for msg in st.session_state.messages[-5:]:
             history_text += f"{msg['role'].upper()}: {msg['content']}\n"
             
         context_prompt = f"""
         Rewrite the LAST USER INPUT based on CHAT HISTORY.
-        CHAT HISTORY:
-        {history_text}
+        CHAT HISTORY: {history_text}
         LAST USER INPUT: "{prompt}"
-        INSTRUCTIONS:
-        1. If the user refers to "it", "he", "that", use history to clarify.
-        2. If the user asks a standalone question, leave it alone.
+        INSTRUCTIONS: If user refers to "it/he/that", clarify. If standalone, keep as is.
         REWRITTEN QUERY:
         """
-        
         try:
-            rewritten_query_resp = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=context_prompt
-            )
-            final_query = rewritten_query_resp.text.strip()
+            rewritten_resp = client.models.generate_content(model="gemini-2.0-flash", contents=context_prompt)
+            final_query = rewritten_resp.text.strip()
         except:
             final_query = prompt
 
-        # 3. ROUTING
+        # 3. ROUTING & EXECUTION
         response = ""
-        
+        generated_images = [] # Store images here
+
         if pdf_path and ("pdf" in final_query.lower() or "document" in final_query.lower() or "summarize" in final_query.lower()):
             status.markdown("📄 Reading PDF...")
             response = agents["doc"].ask_pdf(pdf_path, final_query)
@@ -163,9 +146,16 @@ if prompt := st.chat_input("Ask a question..."):
             status.markdown("🎥 Analyzing Video...")
             response = agents["video"].analyze_video(video_path, final_query)
 
-        elif "code" in final_query.lower() or "python" in final_query.lower() or "calculate" in final_query.lower():
+        elif "code" in final_query.lower() or "python" in final_query.lower() or "calculate" in final_query.lower() or "plot" in final_query.lower():
             status.markdown("💻 Running Code...")
-            response = agents["code"].solve(final_query)
+            
+            # Handle Dictionary Output (Text + Images)
+            result = agents["code"].solve(final_query)
+            if isinstance(result, dict):
+                response = result["text"]
+                generated_images = result.get("images", [])
+            else:
+                response = str(result)
 
         elif "search" in final_query.lower() or "who is" in final_query.lower() or "current" in final_query.lower() or "president" in final_query.lower() or "news" in final_query.lower():
             status.markdown("🌐 Searching Google...")
@@ -175,16 +165,20 @@ if prompt := st.chat_input("Ask a question..."):
             # General Chat
             status.markdown("🤔 Thinking...")
             memory_data = load_memory()
-            system_instruction = f"""
-            You are a helpful study assistant. 
-            USER FACTS: {memory_data['facts']}
-            INSTRUCTION: Be helpful and concise.
-            """
+            sys_prompt = f"You are a helpful study assistant. USER FACTS: {memory_data['facts']}"
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=f"{system_instruction}\n\nUser Query: {final_query}"
+                model="gemini-2.0-flash", 
+                contents=f"{sys_prompt}\n\nUser Query: {final_query}"
             ).text
 
+        # 4. FINAL DISPLAY (Printed Exactly Once)
         status.empty()
         st.markdown(response)
+        
+        # If we have images (from Code Agent), show them now
+        if generated_images:
+            for img_data in generated_images:
+                st.image(img_data.data, caption="Generated Visualization 📊")
+
+        # Save ONLY text to history (Streamlit history doesn't handle raw image bytes well)
         st.session_state.messages.append({"role": "assistant", "content": response})

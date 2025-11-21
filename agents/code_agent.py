@@ -21,38 +21,51 @@ class CodeAgent:
                 contents=problem,
                 config=types.GenerateContentConfig(
                     tools=[{'code_execution': {}}],
-                    response_modalities=["TEXT"],
+                    response_modalities=["TEXT"], 
                     system_instruction=CODE_SYSTEM_PROMPT
                 )
             )
             
-            # CONSTRUCT THE FULL ANSWER MANUALLY
-            # This ensures we see the Code AND the Result
-            final_output = ""
+            result_package = {
+                "text": "",
+                "images": []
+            }
             
             if not response.candidates:
-                return "⚠️ No response generated."
+                result_package["text"] = "⚠️ No response generated."
+                return result_package
+
+            # Debug: Check if we got any parts
+            print(f"   -> Received {len(response.candidates[0].content.parts)} parts from Gemini.")
 
             for part in response.candidates[0].content.parts:
-                # 1. If it's text (Explanation)
+                
                 if part.text:
-                    final_output += part.text + "\n\n"
+                    result_package["text"] += part.text + "\n\n"
                 
-                # 2. If it's code (The script)
                 elif part.executable_code:
-                    final_output += f"```python\n{part.executable_code.code}\n```\n"
+                    print("   -> Code block detected.")
+                    result_package["text"] += f"```python\n{part.executable_code.code}\n```\n"
                 
-                # 3. If it's the result (The number!)
                 elif part.code_execution_result:
-                    # We wrap the result in a nice bold block
+                    print("   -> Execution Result detected.")
                     output = part.code_execution_result.output
-                    final_output += f"**> Execution Result:**\n```\n{output}\n```\n"
+                    result_package["text"] += f"**> Execution Result:**\n```\n{output}\n```\n"
+                
+                # Check for images
+                if hasattr(part, "inline_data") and part.inline_data:
+                    print("   -> Graph detected! 📊")
+                    result_package["images"].append(part.inline_data)
 
-            return final_output
+            return result_package
 
         except Exception as e:
-            return f"Error executing code: {str(e)}"
+            return {"text": f"Error executing code: {str(e)}", "images": []}
 
 if __name__ == "__main__":
     agent = CodeAgent()
-    print(agent.solve("Calculate the area of a circle with radius 5"))
+    # Test with a graphing prompt
+    res = agent.solve("Plot a sine wave from 0 to 10 using matplotlib")
+    print(res["text"])
+    if res["images"]:
+        print(f"Found {len(res['images'])} images.")
