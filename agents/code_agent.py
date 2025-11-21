@@ -6,6 +6,7 @@ from rich.console import Console
 from rich.syntax import Syntax
 from rich.panel import Panel
 from rich.markdown import Markdown
+from utils.prompts import CODE_SYSTEM_PROMPT
 
 load_dotenv()
 API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -28,7 +29,8 @@ class CodeAgent:
                 contents=problem,
                 config=types.GenerateContentConfig(
                     tools=[{'code_execution': {}}],
-                    response_modalities=["TEXT"]
+                    response_modalities=["TEXT"],
+                    system_instruction=CODE_SYSTEM_PROMPT
                 )
             )
             

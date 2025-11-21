@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from utils.prompts import DOC_SYSTEM_PROMPT
 
 # Import the custom tool we just made
 # Note: We need to make sure python can find the tools folder.
@@ -18,25 +19,14 @@ class DocAgent:
         self.model_name = "gemini-2.0-flash"
 
     def ask_pdf(self, pdf_path: str, question: str):
-        """
-        Reads a PDF and answers a question based strictly on its content.
-        """
-        print(f"📄 Doc Agent is reading '{pdf_path}' to answer: '{question}'...")
-
-        # 1. Use our tool to get the text directly
+        # ... (keep the reading logic) ...
         pdf_text = read_pdf(pdf_path)
 
-        # Check if reading failed
-        if "Error reading PDF" in pdf_text:
-            return pdf_text
-
-        # 2. Construct the prompt (Context Stuffing)
-        # We explicitly tell the model to use ONLY the provided text.
-        prompt = f"""
-        You are an expert analyst. Use the provided document text to answer the user's question.
-        If the answer is not in the text, say "I cannot find that information in the document."
+        # NEW: Use the centralized Academic Prompt
+        full_prompt = f"""
+        {DOC_SYSTEM_PROMPT}
         
-        DOCUMENT TEXT:
+        DOCUMENT CONTENT:
         {pdf_text}
         
         USER QUESTION:
@@ -46,7 +36,7 @@ class DocAgent:
         try:
             response = self.client.models.generate_content(
                 model=self.model_name,
-                contents=prompt
+                contents=full_prompt
             )
             return response.text
         except Exception as e:

@@ -2,6 +2,7 @@ import os
 import time
 from dotenv import load_dotenv
 from google import genai
+from utils.prompts import VIDEO_SYSTEM_PROMPT
 
 load_dotenv()
 API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -34,7 +35,7 @@ class VideoAgent:
             
             response = self.client.models.generate_content(
                 model=self.model_name,
-                contents=[video_file, prompt]
+                contents=[video_file, VIDEO_SYSTEM_PROMPT, question]
             )
             
             return response.text
