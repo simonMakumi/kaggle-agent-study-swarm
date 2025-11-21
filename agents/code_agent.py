@@ -2,10 +2,6 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from rich.console import Console
-from rich.syntax import Syntax
-from rich.panel import Panel
-from rich.markdown import Markdown
 from utils.prompts import CODE_SYSTEM_PROMPT
 
 load_dotenv()
@@ -15,13 +11,9 @@ class CodeAgent:
     def __init__(self):
         self.client = genai.Client(api_key=API_KEY)
         self.model_name = "gemini-2.0-flash"
-        self.console = Console()
 
     def solve(self, problem: str):
-        """
-        Generates code, runs it, and formats the output beautifully.
-        """
-        self.console.print(f"[bold blue]💻 Code Agent is solving:[/bold blue] {problem}...")
+        print(f"💻 Code Agent is solving: '{problem}'...")
         
         try:
             response = self.client.models.generate_content(
@@ -34,39 +26,33 @@ class CodeAgent:
                 )
             )
             
-            # We need to handle the response parts manually to make it look good
-            final_answer = ""
+            # CONSTRUCT THE FULL ANSWER MANUALLY
+            # This ensures we see the Code AND the Result
+            final_output = ""
             
-            # Loop through every part of the agent's thought process
-            for part in response.candidates[0].content.parts:
-                
-                # 1. If it's Python Code...
-                if part.executable_code:
-                    code = part.executable_code.code
-                    # Print nicely formatted syntax-highlighted code
-                    syntax = Syntax(code, "python", theme="monokai", line_numbers=True)
-                    self.console.print(Panel(syntax, title="🐍 Generated Python Code", border_style="cyan"))
-                
-                # 2. If it's the Execution Result...
-                elif part.code_execution_result:
-                    output = part.code_execution_result.output
-                    # Print the computer's output in a green box
-                    self.console.print(Panel(output, title="⚙️ Execution Output", border_style="green"))
-                
-                # 3. If it's Text (Explanation)...
-                elif part.text:
-                    # We collect the text to return it, but we don't print it here 
-                    # to avoid cluttering the screen before the final summary.
-                    final_answer += part.text
+            if not response.candidates:
+                return "⚠️ No response generated."
 
-            return final_answer
+            for part in response.candidates[0].content.parts:
+                # 1. If it's text (Explanation)
+                if part.text:
+                    final_output += part.text + "\n\n"
+                
+                # 2. If it's code (The script)
+                elif part.executable_code:
+                    final_output += f"```python\n{part.executable_code.code}\n```\n"
+                
+                # 3. If it's the result (The number!)
+                elif part.code_execution_result:
+                    # We wrap the result in a nice bold block
+                    output = part.code_execution_result.output
+                    final_output += f"**> Execution Result:**\n```\n{output}\n```\n"
+
+            return final_output
 
         except Exception as e:
             return f"Error executing code: {str(e)}"
 
 if __name__ == "__main__":
     agent = CodeAgent()
-    # Test with something that requires calculation
-    result = agent.solve("Calculate the first 10 numbers of the Fibonacci sequence")
-    print("\n--- Final Answer ---")
-    print(result)
+    print(agent.solve("Calculate the area of a circle with radius 5"))

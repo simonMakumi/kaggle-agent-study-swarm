@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import time
 from google import genai
-from utils.memory_store import load_memory, update_memory
+from utils.memory_store import load_memory, update_memory, delete_fact
 
 # Import Agents
 from agents.search_agent import SearchAgent
@@ -53,18 +53,32 @@ with st.sidebar:
 
     st.divider()
 
-    # SECTION 2: MEMORY (Moved Below)
+    # SECTION 2: MEMORY
     st.header("🧠 Long-Term Memory")
     memory = load_memory()
     
+    # Create a clean container for memory
     with st.expander("What I know about you", expanded=True):
-        if memory["facts"]:
-            for fact in memory["facts"]:
-                st.markdown(f"• *{fact}*")
-        else:
+        if not memory["facts"]:
             st.caption("Nothing yet... tell me about yourself!")
+        else:
+            # SMART UI: Toggle for Edit Mode
+            is_editing = st.toggle("Edit Memory", value=False)
 
-    st.divider()
+            for i, fact in enumerate(memory["facts"]):
+                if is_editing:
+                    # EDIT MODE: Show Trash Can Button
+                    # vertical_alignment="center" makes it look perfect
+                    col1, col2 = st.columns([0.8, 0.2], vertical_alignment="center")
+                    with col1:
+                        st.write(f"• {fact}")
+                    with col2:
+                        if st.button("🗑️", key=f"del_{i}", type="tertiary", help="Delete this fact"):
+                            delete_fact(fact)
+                            st.rerun()
+                else:
+                    # VIEW MODE: Just the clean text
+                    st.markdown(f"• *{fact}*")
     
     # SECTION 3: ACTIONS
     if st.button("Clear Chat"):
