@@ -29,8 +29,19 @@ Study Swarm solves this by deploying a team of agents:
 ```mermaid
 graph TD
     User[User 🎓] -->|Input| UI[Streamlit UI 💻]
-    UI -->|History + Query| Brain[Gemini 2.0 Context Manager 🧠]
-    Brain -->|Rewritten Query| Router{Router 🔀}
+    UI -->|History + Query| Context[Context Rewriter 🧠]
+    Context -->|Rewritten Query| Router{Router 🔀}
+    
+    subgraph Brain [Study Swarm Core]
+        Context
+        Router
+        Memory[(Long-Term JSON Memory)]
+        Context <--> Memory
+    end
+    
+    subgraph Quality Control [Offline Eval]
+        Judge[AI Judge ⚖️] -->|Grades| Agents
+    end
     
     Router -->|Web Search| Search[Search Agent 🌐]
     Router -->|PDF Q&A| Doc[Doc Agent 📄]
@@ -41,11 +52,6 @@ graph TD
     Doc -->|RAG + OCR| Tool2((PDF Tool))
     Code -->|Execute| Tool3((Python Sandbox))
     Video -->|Multimodal| Tool4((Gemini Vision))
-    
-    Tool1 --> Search
-    Tool2 --> Doc
-    Tool3 --> Code
-    Tool4 --> Video
     
     Search --> UI
     Doc --> UI
@@ -96,6 +102,17 @@ The system uses a **Hub-and-Spoke** architecture:
 * `tools/`: Custom tools (PDF reader).
 
 * `main.py`: The entry point for the Study Manager.
+
+
+## 🧪 Testing & Evaluation
+Reliability is key. This project includes an automated **AI Evaluation Pipeline** (`evaluate.py`) that uses a "Judge LLM" to grade the agents' performance on a scale of 1-5.
+
+**To run the offline evaluation suite:**
+    ```bash
+    python evaluate.py
+    ```
+
+**Live Evaluation:** You can also enable the "AI Judge ⚖️" toggle in the sidebar to have a second AI grade every response in real-time for Accuracy, Helpfulness, and Safety.
 
 
 ## ☁️ Deployment (Docker)
