@@ -19,8 +19,8 @@ class VideoAgent:
         print(f"🎥 Video Agent is watching: {video_path}...")
 
         try:
-            # 1. Upload the file to Gemini API
-            video_file = self.client.files.upload(path=video_path)
+            # FIX: The argument name is 'file', not 'path' in the new SDK
+            video_file = self.client.files.upload(file=video_path)
             
             # 2. Wait for processing (Big files take a few seconds)
             while video_file.state.name == "PROCESSING":
@@ -30,9 +30,7 @@ class VideoAgent:
             if video_file.state.name == "FAILED":
                 return "⚠️ Video processing failed."
 
-            # 3. Ask the question
-            prompt = f"Watch this video carefully and answer the user's question: {question}"
-            
+            # 3. Ask the question using the System Prompt
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=[video_file, VIDEO_SYSTEM_PROMPT, question]

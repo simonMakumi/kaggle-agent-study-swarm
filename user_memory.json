@@ -2,7 +2,5 @@
     "user_name": "User",
     "preferences": [],
     "facts": [
-        "My name is Simon.",
-        "I thought you should know that I am a python developer"
     ]
 }
