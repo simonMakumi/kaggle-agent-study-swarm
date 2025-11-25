@@ -1,5 +1,14 @@
-# Study Swarm Agent 🐝
-### A Multi-Agent System for Personalized Learning
+<div align="center">
+  <img src="cover_image.jpg" alt="Study Swarm" width="100%" />
+  <h1>Study Swarm 🐝</h1>
+  <h3>Multi-Agent System powered by Gemini 2.0 Flash</h3>
+</div>
+
+## 🎥 Video Demo
+[![Watch the Video](https://youtu.be/u_gO7NrTjOQ/maxresdefault.jpg)](https://youtu.be/u_gO7NrTjOQ)
+> **Click the image above to watch the full demo!**
+
+---
 
 ![Project Status](https://img.shields.io/badge/Status-In%20Development-yellow)
 ![License](https://img.shields.io/badge/License-MIT-green)
