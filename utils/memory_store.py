@@ -25,7 +25,6 @@ def update_memory(new_fact):
         data["facts"].append(new_fact)
         save_memory(data)
 
-# NEW FUNCTION
 def delete_fact(fact_to_delete):
     data = load_memory()
     if fact_to_delete in data["facts"]:

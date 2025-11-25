@@ -4,8 +4,6 @@ from google import genai
 from google.genai import types
 from utils.prompts import DOC_SYSTEM_PROMPT
 
-# Import the custom tool we just made
-# Note: We need to make sure python can find the tools folder.
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tools.pdf_tool import read_pdf
@@ -19,10 +17,8 @@ class DocAgent:
         self.model_name = "gemini-2.0-flash"
 
     def ask_pdf(self, pdf_path: str, question: str):
-        # ... (keep the reading logic) ...
         pdf_text = read_pdf(pdf_path)
 
-        # NEW: Use the centralized Academic Prompt
         full_prompt = f"""
         {DOC_SYSTEM_PROMPT}
         
@@ -45,7 +41,6 @@ class DocAgent:
 # --- Test Block ---
 if __name__ == "__main__":
     # To test this, we need a dummy PDF.
-    # Creates a dummy PDF file for testing if it doesn't exist.
     test_pdf_name = "test_notes.pdf"
     if not os.path.exists(test_pdf_name):
         import fitz

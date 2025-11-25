@@ -3,7 +3,7 @@ import time
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from utils.prompts import SEARCH_SYSTEM_PROMPT # <--- Import
+from utils.prompts import SEARCH_SYSTEM_PROMPT
 
 load_dotenv()
 API_KEY = os.getenv("GOOGLE_API_KEY")

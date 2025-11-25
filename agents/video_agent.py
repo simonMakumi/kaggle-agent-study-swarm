@@ -19,7 +19,6 @@ class VideoAgent:
         print(f"🎥 Video Agent is watching: {video_path}...")
 
         try:
-            # FIX: The argument name is 'file', not 'path' in the new SDK
             video_file = self.client.files.upload(file=video_path)
             
             # 2. Wait for processing (Big files take a few seconds)

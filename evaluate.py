@@ -98,7 +98,7 @@ class AIJudge:
                 "type": "DOC",
                 "query": "What is the budget for Project Apollo 2.0?",
                 "agent": self.doc_agent,
-                "pdf": pdf_path, # Special field for Doc Agent
+                "pdf": pdf_path, 
                 "criteria": "Must extract '$500 Million' from the provided PDF text."
             }
         ]
@@ -114,7 +114,7 @@ class AIJudge:
                 elif test["type"] == "CODE":
                     # Handle the dict response from code agent
                     res_pkg = test["agent"].solve(test["query"])
-                    response = res_pkg["text"] # We evaluate the text output
+                    response = res_pkg["text"] 
                 elif test["type"] == "DOC":
                     response = test["agent"].ask_pdf(test["pdf"], test["query"])
                 

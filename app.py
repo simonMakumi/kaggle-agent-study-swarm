@@ -74,7 +74,7 @@ with st.sidebar:
 
     st.divider()
     
-    # NEW: AI JUDGE TOGGLE
+    # AI JUDGE TOGGLE
     st.header("⚙️ Advanced Settings")
     enable_judge = st.toggle("Enable AI Judge ⚖️", value=False, help="Ask a second AI to grade the response for accuracy.")
     
@@ -208,7 +208,7 @@ if prompt := st.chat_input("Ask a question..."):
 
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-        # 5. LIVE JUDGE (The New Feature)
+        # 5. LIVE JUDGE
         if enable_judge:
             with st.status("👨‍⚖️ The Judge is reviewing...", expanded=True) as judge_status:
                 evaluation = judge_response(final_query, response)

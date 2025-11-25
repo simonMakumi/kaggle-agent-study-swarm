@@ -13,7 +13,7 @@ from rich.markdown import Markdown
 from agents.search_agent import SearchAgent
 from agents.doc_agent import DocAgent
 from agents.code_agent import CodeAgent
-from agents.video_agent import VideoAgent # <--- NEW
+from agents.video_agent import VideoAgent
 
 load_dotenv()
 API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -31,13 +31,13 @@ class StudyManager:
             self.search_agent = SearchAgent()
             self.doc_agent = DocAgent()
             self.code_agent = CodeAgent()
-            self.video_agent = VideoAgent() # <--- NEW
+            self.video_agent = VideoAgent()
             time.sleep(1) 
         
         console.print("[bold green]✅ System Online.[/bold green]")
         
         self.current_pdf = None
-        self.current_video = None # <--- NEW
+        self.current_video = None
 
     def route_query(self, query: str) -> str:
         """
@@ -81,7 +81,7 @@ class StudyManager:
             self.current_pdf = pdf_input
             console.print(f"[green]✅ Loaded PDF:[/green] {self.current_pdf}")
 
-        # 2. Ask for Video (NEW)
+        # 2. Ask for Video
         video_input = Prompt.ask("[bold magenta]🎥 Video Path[/bold magenta] (Enter to skip)")
         if video_input and os.path.exists(video_input):
             self.current_video = video_input

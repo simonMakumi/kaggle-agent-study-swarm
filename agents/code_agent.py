@@ -35,7 +35,6 @@ class CodeAgent:
                 result_package["text"] = "⚠️ No response generated."
                 return result_package
 
-            # Debug: Check if we got any parts
             print(f"   -> Received {len(response.candidates[0].content.parts)} parts from Gemini.")
 
             for part in response.candidates[0].content.parts:

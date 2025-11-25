@@ -5,8 +5,7 @@
 </div>
 
 ## 🎥 Video Demo
-[![Watch the Video](https://youtu.be/u_gO7NrTjOQ/maxresdefault.jpg)](https://youtu.be/u_gO7NrTjOQ)
-> **Click the image above to watch the full demo!**
+[![Watch the Video](https://img.youtube.com/vi/u_gO7NrTjOQ/maxresdefault.jpg)](https://youtu.be/u_gO7NrTjOQ)> **Click the image above to watch the full demo!**
 
 ---
 
